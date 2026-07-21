@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
+    }
+
+    // Business images path: /businesses/{businessId}/{fileName}
+    match /businesses/{businessId}/{fileName} {
+      allow read: if true; // Public photos
+      allow write: if isAuthenticated() && 
+        (isAdmin() || 
+         firestore.get(/databases/(default)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid);
+    }
+    
+    // User avatars path: /users/{userId}/{fileName}
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+  }
+}

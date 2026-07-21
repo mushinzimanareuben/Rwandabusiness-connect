@@ -12,10 +12,11 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import {
   FiMapPin, FiPhone, FiMail, FiGlobe, FiCheckCircle, FiShare2, FiClock,
-  FiMessageSquare, FiAlertCircle
+  FiMessageSquare, FiAlertCircle, FiCalendar
 } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import { BookingModal } from '@/components/business/BookingModal'
 
 // Mock fallback detail data
 const mockDetail = {
@@ -75,6 +76,9 @@ export const BusinessDetailPage = () => {
 
   // Photo Selector
   const [selectedPhoto, setSelectedPhoto] = useState('')
+
+  // Booking Modal State
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -203,6 +207,14 @@ export const BusinessDetailPage = () => {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              <Button
+                onClick={() => setIsBookingOpen(true)}
+                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-extrabold px-5 py-3 rounded-xl shadow-lg active:scale-95 transition-all"
+              >
+                <FiCalendar size={18} />
+                <span>Book Now</span>
+              </Button>
+
               <button
                 onClick={handleShare}
                 className="p-3 rounded-xl bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/25 active:scale-95 transition-all"
@@ -340,12 +352,20 @@ export const BusinessDetailPage = () => {
           <div className="space-y-8">
             {/* Quick Actions */}
             <Card className="bg-white dark:bg-dark-900 border border-gray-150 dark:border-dark-400 p-6 flex flex-col gap-3">
+              <Button
+                onClick={() => setIsBookingOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-3.5 text-base font-extrabold shadow-md bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600"
+              >
+                <FiCalendar size={20} />
+                <span>Book / Make Reservation</span>
+              </Button>
+
               <a
                 href={`tel:${business.phone}`}
                 onClick={() => handleCTA('clicks')}
                 className="w-full"
               >
-                <Button className="w-full flex items-center justify-center gap-2 py-3">
+                <Button variant="outline" className="w-full flex items-center justify-center gap-2 py-3 font-bold">
                   <FiPhone size={18} />
                   <span>Call Now</span>
                 </Button>
@@ -361,7 +381,7 @@ export const BusinessDetailPage = () => {
                 >
                   <Button
                     variant="gold"
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#25d366] hover:bg-[#20ba56]"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#25d366] hover:bg-[#20ba56] text-white font-bold"
                   >
                     <FaWhatsapp size={20} />
                     <span>WhatsApp Chat</span>
@@ -421,6 +441,12 @@ export const BusinessDetailPage = () => {
           </div>
         </div>
       </main>
+
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        business={business}
+      />
 
       <Footer />
     </div>

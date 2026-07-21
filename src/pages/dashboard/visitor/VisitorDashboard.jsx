@@ -1,13 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { StarRating } from '@/components/ui/StarRating'
 import { CATEGORIES } from '@/config/constants'
-import { FiSearch, FiMapPin, FiHeart, FiLayers, FiCompass } from 'react-icons/fi'
+import { FiSearch, FiMapPin, FiHeart, FiLayers, FiCompass, FiCalendar, FiClock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useAppStore } from '@/store/useAppStore'
+import { useAuth } from '@/contexts/AuthContext'
+import { getUserBookings } from '@/services/bookingService'
 
 const recommended = [
   { id: 'r-1', name: 'Kigali Serena Hotel', category: 'hotels', city: 'Kigali', rating: 4.9, reviewCount: 142, coverUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80' },
@@ -20,9 +22,19 @@ const recommended = [
 
 export const VisitorDashboard = () => {
   const { language } = useTranslation()
+  const { currentUser } = useAuth()
   const navigate = useNavigate()
   const { searchQuery, setSearchQuery, setSearchCategory } = useAppStore()
   const [q, setQ] = useState('')
+  const [bookings, setBookings] = useState([])
+
+  useEffect(() => {
+    const fetchBks = async () => {
+      const bks = await getUserBookings(currentUser?.uid, currentUser?.email)
+      setBookings(bks)
+    }
+    fetchBks()
+  }, [currentUser])
 
   const handleSearchSubmit = (e) => {
     e.preventDefault()
@@ -87,6 +99,58 @@ export const VisitorDashboard = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* My Bookings & Reservations Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FiCalendar className="text-primary-500" size={20} />
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">My Bookings & Reservations</h2>
+          </div>
+          <span className="text-xs font-bold text-gray-400">
+            {bookings.length} {bookings.length === 1 ? 'Booking' : 'Bookings'}
+          </span>
+        </div>
+
+        {bookings.length === 0 ? (
+          <Card className="p-6 text-center bg-white dark:bg-dark-900 border border-gray-100 dark:border-dark-400">
+            <FiCalendar className="mx-auto text-gray-300 dark:text-gray-600 mb-2" size={32} />
+            <p className="text-sm font-semibold text-gray-500">You have no active bookings yet.</p>
+            <p className="text-xs text-gray-400 mt-1">Browse hotels, restaurants, or services to place your first reservation!</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bookings.map((bk) => (
+              <Card key={bk.id} className="p-5 bg-white dark:bg-dark-900 border border-gray-150 dark:border-dark-400 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="px-2 py-0.5 rounded-full text-2xs font-extrabold bg-primary-100 dark:bg-primary-950/40 text-primary-600 uppercase tracking-wider">
+                      {bk.refCode || '#RBC'}
+                    </span>
+                    <h3 className="font-bold text-base text-gray-850 dark:text-white mt-1">
+                      {bk.businessName}
+                    </h3>
+                    <p className="text-2xs text-gray-400 font-semibold">{bk.serviceType}</p>
+                  </div>
+                  <Badge variant={bk.status === 'confirmed' ? 'success' : bk.status === 'cancelled' ? 'danger' : 'warning'}>
+                    {bk.status ? bk.status.toUpperCase() : 'PENDING'}
+                  </Badge>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100 dark:border-dark-800 flex items-center justify-between text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  <div className="flex items-center gap-1.5">
+                    <FiCalendar className="text-primary-500" />
+                    <span>{bk.bookingDate} at {bk.bookingTime}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>{bk.guests} {bk.guests === 1 ? 'Guest' : 'Guests'}</span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recommended Grid */}

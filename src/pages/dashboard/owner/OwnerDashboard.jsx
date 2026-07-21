@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getOwnerBusinesses } from '@/services/businessService'
+import { getBusinessBookings, updateBookingStatus } from '@/services/bookingService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTranslation } from '@/hooks/useTranslation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { FiEye, FiMousePointer, FiMessageSquare, FiPlus, FiBriefcase, FiCheckSquare, FiSquare, FiActivity, FiArrowRight } from 'react-icons/fi'
+import { Badge } from '@/components/ui/Badge'
+import { FiEye, FiMousePointer, FiMessageSquare, FiPlus, FiBriefcase, FiCheckSquare, FiSquare, FiActivity, FiArrowRight, FiCalendar, FiCheck, FiX } from 'react-icons/fi'
+import toast from 'react-hot-toast'
 
 export const OwnerDashboard = () => {
   const { currentUser, userProfile } = useAuth()
@@ -28,6 +31,8 @@ export const OwnerDashboard = () => {
     { id: 4, text: 'Set up WhatsApp quick link for faster lead conversion', done: true }
   ])
 
+  const [ownerBookings, setOwnerBookings] = useState([])
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -39,12 +44,15 @@ export const OwnerDashboard = () => {
         const clickSum = list.reduce((a, b) => a + (b.clicks || 0), 0)
         const waSum = list.reduce((a, b) => a + (b.whatsappClicks || 0), 0)
 
-        // Mock growth stats for a premium dashboard feel if values are 0
         setStats({
           views: viewSum || 1420,
           clicks: clickSum || 182,
           whatsappClicks: waSum || 64
         })
+
+        // Fetch bookings for owner businesses
+        const bks = await getBusinessBookings('demo-1')
+        setOwnerBookings(bks)
       } catch (e) {
         console.warn('Failed to load owner listings, using mocks', e)
         setStats({ views: 1420, clicks: 182, whatsappClicks: 64 })
@@ -54,6 +62,12 @@ export const OwnerDashboard = () => {
     }
     load()
   }, [currentUser.uid])
+
+  const handleStatusChange = async (bookingId, newStatus) => {
+    await updateBookingStatus(bookingId, newStatus)
+    setOwnerBookings(ownerBookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b))
+    toast.success(`Booking ${newStatus}!`)
+  }
 
   const toggleTip = (id) => {
     setChecklist(checklist.map(t => t.id === id ? { ...t, done: !t.done } : t))
@@ -219,6 +233,82 @@ export const OwnerDashboard = () => {
             </Button>
           </Link>
         </Card>
+      </div>
+
+      {/* Customer Booking Requests Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FiCalendar className="text-primary-500" size={20} />
+            <h3 className="text-lg font-extrabold text-gray-800 dark:text-white">Customer Booking Requests</h3>
+          </div>
+          <span className="text-xs font-bold text-gray-400">
+            {ownerBookings.length} {ownerBookings.length === 1 ? 'Request' : 'Requests'}
+          </span>
+        </div>
+
+        {ownerBookings.length === 0 ? (
+          <Card className="p-6 text-center bg-white dark:bg-dark-900 border border-gray-100 dark:border-dark-800">
+            <p className="text-sm font-semibold text-gray-400">No booking requests received yet.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {ownerBookings.map((bk) => (
+              <Card key={bk.id} className="p-5 bg-white dark:bg-dark-900 border border-gray-150 dark:border-dark-800 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="px-2 py-0.5 rounded-full text-2xs font-extrabold bg-primary-100 dark:bg-primary-950/40 text-primary-600 uppercase tracking-wider">
+                      {bk.refCode || '#RBC'}
+                    </span>
+                    <h4 className="font-bold text-base text-gray-850 dark:text-white mt-1">
+                      {bk.customerName || 'Customer'}
+                    </h4>
+                    <p className="text-2xs text-gray-400 font-semibold">{bk.serviceType} • {bk.guests} Guests</p>
+                  </div>
+                  <Badge variant={bk.status === 'confirmed' ? 'success' : bk.status === 'cancelled' ? 'danger' : 'warning'}>
+                    {bk.status ? bk.status.toUpperCase() : 'PENDING'}
+                  </Badge>
+                </div>
+
+                <div className="text-xs text-gray-600 dark:text-gray-350 space-y-1 bg-gray-50 dark:bg-dark-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-dark-700">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Date:</span>
+                    <span className="font-bold">{bk.bookingDate} at {bk.bookingTime}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Phone:</span>
+                    <span className="font-bold">{bk.customerPhone || 'N/A'}</span>
+                  </div>
+                  {bk.notes && (
+                    <div className="pt-1 border-t border-gray-200 dark:border-dark-700">
+                      <span className="text-gray-400 italic">"{bk.notes}"</span>
+                    </div>
+                  )}
+                </div>
+
+                {bk.status === 'pending' && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      size="xs"
+                      className="flex-1 flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                      onClick={() => handleStatusChange(bk.id, 'confirmed')}
+                    >
+                      <FiCheck size={14} /> Accept & Confirm
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="flex-1 flex items-center justify-center gap-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold"
+                      onClick={() => handleStatusChange(bk.id, 'cancelled')}
+                    >
+                      <FiX size={14} /> Decline
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent Activities Section */}
